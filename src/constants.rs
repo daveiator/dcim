@@ -1,36 +1,7 @@
 use rug::{Integer, integer::Order, Complete, Float, float::{Round, Constant}, ops::Pow, rand::RandState};
 use std::time::{SystemTime, Duration};
 
-mod custom {
-    pub const HELPMSG: &str = "
-    ╭─────────────────────────╮
-    │   ╷           •         │
-    │   │                     │
-    │ ╭─┤  ╭─╴  •  ╶┤   ┌─┬─╮ │
-    │ │ │  │        │   │ │ │ │
-    │ ╰─┘  ╰─╴  •  ╶┴╴  ╵   ╵ │
-    ╰─────────────────────────╯
-
-    dc improved - Feature-added rewrite of an RPN calculator/stack machine language from 1970-72
-    Most basic GNU dc features are unaltered, full documentation at https://github.com/43615/dcim
-
-    Options and syntax:
-
-    <nothing> | --interactive | -i | i
-        Interactive mode, standard prompt loop.
-
-    (--expression | -e | e) expr1 expr2 expr3 ... [?]
-        Expression mode, executes expressions in order. If the last argument is '?', enters interactive mode after expressions are done.
-
-    (--file | -f | f) file1 file2 file3 ... [?]
-        File mode, executes contents of files in order. '?' behaves the same as with -e.
-
-    --help | -h | h
-        Print this help message.
-    ";
-}
-
-mod env {
+pub mod env {
 	use rug::Integer;
 	use std::cmp::Ordering;
     pub const INT_ROUND_DEFAULT: (Integer, Ordering) = (Integer::ZERO, Ordering::Equal);
