@@ -1,42 +1,55 @@
-use rug::{Integer, integer::Order, Complete, Float, float::{Round, Constant}, ops::Pow, rand::RandState};
+use rug::{Integer, integer::Order, Complete, Float, float::{Round, Constant}, ops::Pow, rand::{RandGen, RandState}};
 use std::io::{stdin, stdout, Write};
 use std::time::{SystemTime, Duration};
 use std::cmp::Ordering;
 
-use crate::constants;
+mod constants;
 
 //DCIM instance
 pub struct Handler<'a> {
-    main_stack: 'a mut Vec<stack_object>, //basic object on a dc stack, can be a number or string
+    main_stack: Vec<StackObject>, //basic object on a dc stack, can be a number or string
 
-    registers: 'a mut [register; 65536],
-    register_buffer: 'a mut register,
-    direct_register_selector: 'a mut Option<usize>,
+    registers: [Register; 65536],
+    register_buffer: RegisterObject,
+    direct_register_selector: Option<usize>,
 
 
-    parameter_stack: 'a mut (Integer, Integer, Integer), //stores (k,i,o) tuples, used by '{' and '}'
+    parameter_stack: (Integer, Integer, Integer), //stores (k,i,o) tuples, used by '{' and '}'
     
-    working_precision: 'a mut u32, //working precision (rug Float mantissa length)
+    working_precision: u32, //working precision (rug Float mantissa length)
 
-    rng: RandState, //random number generator
+    rng: RandState<'a>, //random number generator
     
 }
 
-impl Default for Handler<'a> {
+impl<'a> Default for Handler<'a> {
     fn default() -> Self {
+        let working_precision = 256;
+        let mut new_rng: RandState<'a> = RandState::new();
         Handler {
-            working_precision: 256,
-            rng: RandState:new().seed(&(Integer::from(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap_or(Duration::MAX).as_nanos()) * std::process::id())),
+            working_precision,
+            rng: RandState::new_custom(&mut RandSeed),
 
             main_stack: Vec::new(),
             registers: [Vec::new(); 65536],
-            register_buffer: Float::with_val(working_precision, 0),
-            parameter_stack: (Integer::from(-1) , Integer::from(10), Integer::from(10)),
+            register_buffer: vec![StackObject::Float(Float::with_val(working_precision, 0 as u32))],
+            direct_register_selector: None,
+            parameter_stack: (Integer::from(-1 as i32) , Integer::from(10 as i32), Integer::from(10 as i32)),
         }
     }
 }
 
 
-type stack_object = <T: Float + String>;
-type register_object = <T: stack_object + Vec<stack_object>>;
-type register = Vec<register_object>;
+enum StackObject { // : Float + String
+    Float(Float),
+    String(String),
+}
+type RegisterObject = Vec<StackObject>; // : Vec<stack_object>
+type Register = Vec<RegisterObject>;
+
+struct RandSeed;
+impl RandGen for RandSeed {
+    fn gen(&mut self) -> u32 {
+        SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap_or(Duration::MAX).as_nanos() as u32 * std::process::id()
+    }
+}
