@@ -1,4 +1,4 @@
-// use std::io::{stdin, stdout, Write};
+use std::io::{stdin, stdout, Write};
 use std::fs::File;
 use dcim::handler;
 
@@ -37,13 +37,32 @@ fn main () {
 	args.remove(0);	//remove name of executable
 
     if args.is_empty() {
-        args = vec![""];
+        args = vec!["-i"];
     }
     let mode = args.remove(0);
     match mode {
         "--interactive"|"-i"|"i" => {
             //ability to force interactive mode just in case
-            
+            let mut handler = handler::Handler::new(PRECISION);
+            loop {
+                //prompt for user input
+                print!("> ");
+                stdout().flush().unwrap();
+                let mut input = String::new();
+                match stdin().read_line(&mut input) {
+                    Ok(_) => {},
+                    Err(error) => {
+                        eprintln!("! Unable to read standard input: {}", error);
+                        break;
+                    }
+                }
+                if input.is_empty() {
+                    print!("\r");
+                    break;
+                }
+                let output = handler.handle(handler::Input::Interactive(&input));
+                for x in output.iter() { print_output(x); }
+            }
         },
         "--expression"|"-e"|"e" => {
             for x in handler::Handler::new(PRECISION).handle(handler::Input::Expression(args)).iter() { print_output(x); }

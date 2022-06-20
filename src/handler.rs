@@ -16,13 +16,12 @@ lazy_static! {
 pub struct Handler {
     main_stack: Vec<StackObject>, //basic object on a dc stack, can be a number or string
 
-    registers: [Register; 65536],
+    registers: Vec<Register>,
     register_buffer: RegisterObject,
     direct_register_selector: Option<usize>,
 
-    parameter_stack: (Integer, Integer, Integer), //stores (k,i,o) tuples, used by '{' and '}'
+    parameter_stack: Vec<(Integer, Integer, Integer)>, //stores (k,i,o) tuples, used by '{' and '}'
     
-    mode: String,
     working_precision: u32, //working precision (rug Float mantissa length)
 
 }
@@ -32,13 +31,12 @@ impl Default for Handler {
         let working_precision = 256;
         Handler {
             working_precision,
-            mode: "interactive".to_string(),
 
             main_stack: Vec::new(),
-            registers: vec![Vec::new(); 65536].try_into().unwrap(),
+            registers: vec![Vec::new(); 65536],
             register_buffer: vec![StackObject::Float(Float::with_val(working_precision, 0 as u32))],
             direct_register_selector: None,
-            parameter_stack: (Integer::from(-1 as i32) , Integer::from(10 as i32), Integer::from(10 as i32)),
+            parameter_stack: vec![(Integer::from(-1 as i32) , Integer::from(10 as i32), Integer::from(10 as i32))],
         }
     }
 }
