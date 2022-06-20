@@ -1,7 +1,6 @@
 use rug::{Integer, Float, rand::RandState};
 
 use std::sync::Arc;
-use std::fs::File;
 
 use crate::commands;
 
@@ -48,23 +47,34 @@ impl Handler {
         let mut output = Vec::new();
         match input {
             Input::Interactive(input) => {
-
+                commands::execute(self, input.to_string()).into_iter().for_each(|x| output.push(x));
+                return output;
             },
-            Input::Expression(commands) => {
-                if commands.is_empty() {
+            Input::Expression(expressions) => {
+                if expressions.is_empty() {
                     output.push(Err("! Empty expression".to_string()));
-                } else {
-                    
+                    return output;
+                }
+                for i in 0..expressions.len() {
+                    if i==expressions.len()-1 && expressions[i]=="?" {
+                        //if last expression is "?", request interactive mode
+                        output.push(Ok((Some("File read!".to_string()), Command::Interactive)));
+                        return output;
+                    }
+                    commands::execute(self, expressions[i].to_string()).into_iter().for_each(|x| output.push(x));
+                    return output;
                 }
             },
             Input::File(files) => {
                 if files.is_empty() {
-                     output.push(Err("! No file name provided".to_string())) //Return error
+                     output.push(Err("! No file name provided".to_string()));
+                     return output;
                 } else {
                     for i in 0..files.len() {
                         if i==files.len()-1 && files[i]=="?" {
                             //if last filename is "?", request interactive mode
-                            output.push(Ok(("File read!".to_string(), Command::Interactive))) //return                        }
+                            output.push(Ok((Some("File read!".to_string()), Command::Interactive)));
+                            return output;
                         }
                         match std::fs::read_to_string(files[i]) {
                             Ok(content) => {
@@ -73,15 +83,15 @@ impl Handler {
                                 return output;
                             },
                             Err(error) => {
-                                output.push(Err(format!("! Unable to read file \"{}\": {}", files[i], error)))
+                                output.push(Err(format!("! Unable to read file \"{}\": {}", files[i], error)));
+                                return output;
                             },
                         }
                     }
                 }
             },
-
         }
-        vec!(Ok(("Ok".to_string(), Command::None)))
+        vec!(Err("! Didn't get a valid input (Somehow)".to_string()))
     }
 }
 
@@ -116,7 +126,7 @@ enum StackObject { // : Float + String
 type RegisterObject = Vec<StackObject>; // : Vec<stack_object>
 type Register = Vec<RegisterObject>;
 
-pub type Output<'a> = Result<(String, Command), String>;
+pub type Output<'a> = Result<(Option<String>, Command), String>;
 
 pub enum Command {
     Exit,

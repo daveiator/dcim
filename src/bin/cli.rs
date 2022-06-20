@@ -71,11 +71,11 @@ fn main () {
 
 fn manage_output(output: &Vec<handler::Output>, handler: &mut handler::Handler) {
     output.iter().for_each(|output| {
-        let message = match output {
-            Ok((message, _)) => message,
-            Err(message) => message,
-        };
-        println!("{}", message);
+        match output {
+            Ok((None, _)) => {},
+            Ok((Some(message), _)) => println!("{}", message),
+            Err(message) => println!("{}", message),
+        }
 
         match 
             match output {
