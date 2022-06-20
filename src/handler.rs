@@ -1,11 +1,9 @@
-use rug::{Integer, integer::Order, Complete, Float, float::{Round, Constant}, ops::Pow, rand::{RandGen, RandState}};
+use rug::{Integer, Float, rand::RandState};
 
-use std::cmp::Ordering;
 use std::sync::Arc;
-use std::convert::TryInto;
 use std::fs::File;
 
-use crate::constants;
+use crate::commands;
 
 use lazy_static::lazy_static;
 lazy_static! {
@@ -45,12 +43,67 @@ impl Handler {
     pub fn new(working_precision: u32) -> Self {
         Handler { working_precision, ..Default::default() }
     }
-    /*
-    pub fn new_with_mode(working_precision: u32, mode: SessionMode) -> Self {
-        Handler { working_precision, mode ..Default::default() }
-    }*/
+
     pub fn handle(&mut self, input: Input) -> Vec<Output> {
-        vec!(Ok(("Ok", Command::None)))
+        let mut output = Vec::new();
+        match input {
+            Input::Interactive(input) => {
+
+            },
+            Input::Expression(commands) => {
+                if commands.is_empty() {
+                    output.push(Err("! Empty expression".to_string()));
+                } else {
+                    
+                }
+            },
+            Input::File(files) => {
+                if files.is_empty() {
+                     output.push(Err("! No file name provided".to_string())) //Return error
+                } else {
+                    for i in 0..files.len() {
+                        if i==files.len()-1 && files[i]=="?" {
+                            //if last filename is "?", request interactive mode
+                            output.push(Ok(("File read!".to_string(), Command::Interactive))) //return                        }
+                        }
+                        match std::fs::read_to_string(files[i]) {
+                            Ok(content) => {
+                                let no_comments = content.lines().map(|line| line.split_once('#').unwrap_or((line,"")).0).collect::<Vec<&str>>().join("\n");
+                                commands::execute(self, no_comments).into_iter().for_each(|x| output.push(x));
+                                return output;
+                            },
+                            Err(error) => {
+                                output.push(Err(format!("! Unable to read file \"{}\": {}", files[i], error)))
+                            },
+                        }
+                    }
+                }
+            },
+
+        }
+        vec!(Ok(("Ok".to_string(), Command::None)))
+    }
+}
+
+impl Clone for Handler {
+    fn clone(&self) -> Self {
+        Self {
+            working_precision: self.working_precision,
+            main_stack: self.main_stack.clone(),
+            registers: self.registers.clone(),
+            register_buffer: self.register_buffer.clone(),
+            direct_register_selector: self.direct_register_selector,
+            parameter_stack: self.parameter_stack.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.working_precision = source.working_precision;
+        self.main_stack = source.main_stack.clone();
+        self.registers = source.registers.clone();
+        self.register_buffer = source.register_buffer.clone();
+        self.direct_register_selector = source.direct_register_selector;
+        self.parameter_stack = source.parameter_stack.clone();
     }
 }
 
@@ -63,17 +116,17 @@ enum StackObject { // : Float + String
 type RegisterObject = Vec<StackObject>; // : Vec<stack_object>
 type Register = Vec<RegisterObject>;
 
-pub type Output<'a> = Result<(&'a str, Command), &'a str>;
+pub type Output<'a> = Result<(String, Command), String>;
 
 pub enum Command {
     Exit,
     Restart,
+    Interactive,
     None,
 }
 
 pub enum Input<'a> {
     Interactive(&'a str),
     Expression(Vec<&'a str>),
-    File(File),
-    Help,
+    File(Vec<&'a str>),
 }

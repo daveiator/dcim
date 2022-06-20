@@ -1,5 +1,5 @@
 use std::io::{stdin, stdout, Write};
-use std::fs::File;
+
 use dcim::handler;
 
 const HELPMSG: &str = "
@@ -40,36 +40,25 @@ fn main () {
         args = vec!["-i"];
     }
     let mode = args.remove(0);
+
+    let mut handler = handler::Handler::new(PRECISION);
+
     match mode {
         "--interactive"|"-i"|"i" => {
             //ability to force interactive mode just in case
-            let mut handler = handler::Handler::new(PRECISION);
-            loop {
-                //prompt for user input
-                print!("> ");
-                stdout().flush().unwrap();
-                let mut input = String::new();
-                match stdin().read_line(&mut input) {
-                    Ok(_) => {},
-                    Err(error) => {
-                        eprintln!("! Unable to read standard input: {}", error);
-                        break;
-                    }
-                }
-                if input.is_empty() {
-                    print!("\r");
-                    break;
-                }
-                let output = handler.handle(handler::Input::Interactive(&input));
-                for x in output.iter() { print_output(x); }
-            }
+            
+            interactive_mode(handler);
         },
         "--expression"|"-e"|"e" => {
-            for x in handler::Handler::new(PRECISION).handle(handler::Input::Expression(args)).iter() { print_output(x); }
+           
+            let output = handler.handle(handler::Input::Expression(args));
+            manage_output(&output, &mut handler);
+
+            
         },
         "--file"|"-f"|"f" => {
-            let file = File::open(args[0]).unwrap();
-            for x in handler::Handler::new(PRECISION).handle(handler::Input::File(file)).iter() { print_output(x); }
+            let output = handler.handle(handler::Input::File(args));
+            manage_output(&output, &mut handler);
         },
         "--help"|"-h"|"h" => {
             println!("{}", HELPMSG);
@@ -80,16 +69,51 @@ fn main () {
     }
 }
 
-fn print_output(output: &handler::Output) {
-    let (message, command) = match output {
-        Ok((message, command)) => (message, command),
-        Err(message) => (message, &handler::Command::Exit),
-    };
-    println!("{}", message);
-    match command {
-        handler::Command::Exit => {
-            std::process::exit(0);
-        },
-        _ => {},
+fn manage_output(output: &Vec<handler::Output>, handler: &mut handler::Handler) {
+    output.iter().for_each(|output| {
+        let message = match output {
+            Ok((message, _)) => message,
+            Err(message) => message,
+        };
+        println!("{}", message);
+
+        match 
+            match output {
+            Ok((_, command)) => command,
+            Err(message) => panic!("{}", message),
+            } 
+        {
+            handler::Command::Exit => {
+                std::process::exit(0);
+            },
+            handler::Command::Interactive => {
+                interactive_mode(handler.clone());
+            },
+            _ => {
+                eprintln!("! WIP Not implemented yet!");
+            }
+        }
+    });
+}
+
+fn interactive_mode(mut handler: handler::Handler) {
+    loop {
+        //prompt for user input
+        print!("> ");
+        stdout().flush().unwrap();
+        let mut input = String::new();
+        match stdin().read_line(&mut input) {
+            Ok(_) => {},
+            Err(error) => {
+                eprintln!("! Unable to read standard input: {}", error);
+                break;
+            }
+        }
+        if input.is_empty() {
+            print!("\r");
+            break;
+        }
+        let output = handler.handle(handler::Input::Interactive(&input));
+        manage_output(&output, &mut handler);
     }
 }
