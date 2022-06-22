@@ -71,26 +71,41 @@ fn main () {
 
 fn manage_output(output: &Vec<handler::Output>, handler: &mut handler::Handler) {
     output.iter().for_each(|output| {
+        let mut print_message = None;
+        match output {
+            Err(message) => eprintln!("{}", message),
+            Ok((None, _)) => {},
+            Ok((Some(message), _)) => {
+                print_message = Some(format!("{}", message));
+            },
+        }
+        
         match output {
             Ok((None, _)) => {},
             Ok((Some(message), _)) => println!("{}", message),
             Err(message) => println!("{}", message),
         }
 
-        match 
-            match output {
-            Ok((_, command)) => command,
-            Err(message) => panic!("{}", message),
-            } 
-        {
-            handler::Command::Exit => {
-                std::process::exit(0);
-            },
-            handler::Command::Interactive => {
-                interactive_mode(handler.clone());
-            },
-            _ => {
-                eprintln!("! WIP Not implemented yet!");
+        if let Ok((_, commands)) = output {
+            for command in commands {
+                match command {
+                    handler::Command::Exit => {
+                        std::process::exit(0);
+                    },
+                    handler::Command::Interactive => {
+                        if let Some(message) = print_message { println!("{}", message); }
+                        interactive_mode(handler.clone());
+                    },
+                    handler::Command::NoNewLine => {
+                        if let Some(message) = print_message {
+                            print!("{}", message);
+                            stdout().flush().unwrap();
+                        }
+                    },
+                    _ => {
+                        eprintln!("! WIP Not implemented yet!");
+                    }
+                }
             }
         }
     });
