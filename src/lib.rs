@@ -1,3 +1,4 @@
+#[macro_use]
 pub mod handler;
 pub mod constants;
 mod commands;
