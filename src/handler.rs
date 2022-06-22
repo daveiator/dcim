@@ -1,5 +1,7 @@
 use rug::{Integer, Float, rand::RandState};
 
+use std::ops::Add;
+
 use std::sync::Arc;
 
 use crate::commands;
@@ -11,15 +13,15 @@ lazy_static! {
 
 //DCIM instance
 pub struct Handler {
-    main_stack: Vec<StackObject>, //basic object on a dc stack, can be a number or string
+    pub main_stack: Vec<StackObject>, //basic object on a dc stack, can be a number or string
 
-    registers: Vec<Register>,
+    pub registers: Vec<Register>,
     register_buffer: RegisterObject,
-    direct_register_selector: Option<usize>,
+    pub direct_register_selector: Option<usize>,
 
-    parameter_stack: Vec<(Integer, Integer, Integer)>, //stores (k,i,o) tuples, used by '{' and '}'
+    pub parameter_stack: Vec<(Integer, Integer, Integer)>, //stores (k,i,o) tuples, used by '{' and '}'
     
-    working_precision: u32, //working precision (rug Float mantissa length)
+    pub working_precision: u32, //working precision (rug Float mantissa length)
 
 }
 
@@ -58,7 +60,7 @@ impl Handler {
                 for i in 0..expressions.len() {
                     if i==expressions.len()-1 && expressions[i]=="?" {
                         //if last expression is "?", request interactive mode
-                        output.push(Ok((Some("File read!".to_string()), Command::Interactive)));
+                        output.push(Ok((Some("File read!".to_string()), vec![Command::Interactive])));
                         return output;
                     }
                     commands::execute(self, expressions[i].to_string()).into_iter().for_each(|x| output.push(x));
@@ -73,7 +75,7 @@ impl Handler {
                     for i in 0..files.len() {
                         if i==files.len()-1 && files[i]=="?" {
                             //if last filename is "?", request interactive mode
-                            output.push(Ok((Some("File read!".to_string()), Command::Interactive)));
+                            output.push(Ok((Some("File read!".to_string()), vec![Command::Interactive])));
                             return output;
                         }
                         match std::fs::read_to_string(files[i]) {
@@ -118,20 +120,42 @@ impl Clone for Handler {
 }
 
 #[derive(Clone, Debug)]
-enum StackObject { // : Float + String
+pub enum StackObject { // : Float + String
     Float(Float),
     String(String),
+}
+
+impl Add for StackObject {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::Float(a), Self::Float(b)) => Self::Float(a+b),
+            (Self::String(a), Self::String(b)) => Self::String(a+&b),
+            _ => panic!("! Cannot add {:?} and {:?}\t They are different types!", self, other),
+        }
+    }
+}
+
+impl StackObject {
+    pub fn equal_types(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Float(_), Self::Float(_)) => true,
+            (Self::String(_), Self::String(_)) => true,
+            _ => false,
+        }
+    }
 }
 
 type RegisterObject = Vec<StackObject>; // : Vec<stack_object>
 type Register = Vec<RegisterObject>;
 
-pub type Output<'a> = Result<(Option<String>, Command), String>;
+pub type Output<'a> = Result<(Option<String>, Vec<Command>), String>;
 
 pub enum Command {
     Exit,
     Restart,
     Interactive,
+    NoNewLine,
     None,
 }
 
@@ -140,3 +164,21 @@ pub enum Input<'a> {
     Expression(Vec<&'a str>),
     File(Vec<&'a str>),
 }
+
+
+#[macro_export]
+macro_rules! output {
+        (Ok, $x:expr, $y:expr) => {
+            Ok((Some(format!("{}", $x)), vec![$y]))
+        };
+        (Ok, $x:expr) => {
+            Ok((Some(format!("{}", $x)), vec![$crate::handler::Command::None]))
+        };
+        (Ok) => {
+            Ok((None, vec![$crate::handler::Command::None]))
+        };
+        (Err, $x:expr) => {
+            Err(format!("{}", $x))
+        };
+}
+pub(crate) use output;
