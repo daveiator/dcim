@@ -1,6 +1,7 @@
 use rug::{Integer, Float, rand::RandState};
 
 use std::ops::Add;
+use std::fmt;
 
 use crate::commands;
 
@@ -9,7 +10,7 @@ pub struct Handler {
     pub main_stack: Vec<StackObject>, //basic object on a dc stack, can be a number or string
 
     pub registers: Vec<Register>,
-    register_buffer: RegisterObject,
+    pub register_buffer: RegisterObject,
     pub direct_register_selector: Option<usize>,
 
     pub parameter_stack: Vec<(Integer, Integer, Integer)>, //stores (k,i,o) tuples, used by '{' and '}'
@@ -118,6 +119,15 @@ pub enum StackObject { // : Float + String
     String(String),
 }
 
+impl fmt::Display for StackObject {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            StackObject::Float(x) => write!(f, "{}", x),
+            StackObject::String(x) => write!(f, "{}", x),
+        }
+    }
+}
+
 impl Add for StackObject {
     type Output = Self;
     fn add(self, other: Self) -> Self {
@@ -169,7 +179,7 @@ type Register = Vec<RegisterObject>;
 pub type Output<'a> = Result<(Option<String>, Vec<Command>), String>;
 
 pub enum Command {
-    Exit,
+    Exit(i32),
     Restart,
     Interactive,
     NoNewLine,

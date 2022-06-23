@@ -89,8 +89,8 @@ fn manage_output(output: &Vec<handler::Output>, handler: &mut handler::Handler) 
         if let Ok((_, commands)) = output {
             for command in commands {
                 match command {
-                    handler::Command::Exit => {
-                        std::process::exit(0);
+                    handler::Command::Exit(stopcode) => {
+                        std::process::exit(stopcode);
                     },
                     handler::Command::Interactive => {
                         if let Some(message) = print_message { println!("{}", message); }

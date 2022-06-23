@@ -59,11 +59,7 @@ pub fn print_register<'a>(handler: &'a Handler, command_stack: &mut Vec<String>)
         output.push(output!(Err, "! No register number provided"));
     }
     else {
-        let ri = if let Some(_) = handler.direct_register_selector {
-            handler.direct_register_selector.take().unwrap()
-        } else {
-            command_stack.last_mut().unwrap().pop().unwrap() as usize
-        };
+        let ri = handler.direct_register_selector.take().unwrap_or(command_stack.last_mut().unwrap().pop().unwrap() as usize);
         if handler.registers.len()>ri {
             if !handler.registers[ri].is_empty(){
                 for i in (0..handler.registers[ri].len()).rev() {
