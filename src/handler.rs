@@ -2,14 +2,7 @@ use rug::{Integer, Float, rand::RandState};
 
 use std::ops::Add;
 
-use std::sync::Arc;
-
 use crate::commands;
-
-use lazy_static::lazy_static;
-lazy_static! {
-    static ref RNG: Arc<RandState<'static>> = Arc::new(RandState::new());
-}
 
 //DCIM instance
 pub struct Handler {
@@ -137,11 +130,35 @@ impl Add for StackObject {
 }
 
 impl StackObject {
-    pub fn equal_types(&self, other: &Self) -> bool {
+    pub fn is_equal_type(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Float(_), Self::Float(_)) => true,
             (Self::String(_), Self::String(_)) => true,
             _ => false,
+        }
+    }
+    pub fn is_float(&self) -> bool {
+        match self {
+            Self::Float(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_string(&self) -> bool {
+        match self {
+            Self::String(_) => true,
+            _ => false,
+        }
+    }
+    pub fn get_float(&self) -> &Float {
+        match self {
+            Self::Float(f) => f,
+            _ => panic!("! Cannot get from {:?}", self),
+        }
+    }
+    pub fn get_string(&self) -> &String {
+        match self {
+            Self::String(s) => s,
+            _ => panic!("! Cannot get from {:?}", self),
         }
     }
 }

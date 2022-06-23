@@ -2,6 +2,84 @@ use rug::{Integer, integer::Order, Complete, Float, float::{Round, Constant}, op
 
 use crate::handler::{Handler, Output, StackObject, output};
 
+mod object_input;
+mod printing;
+mod arithmetic;
+mod constants;
+
+fn run_command<'a>(handler: &'a mut Handler, command_stack: &mut Vec<String>, command: char) -> Vec<Output<'a>> {
+	match command {
+		/*------------------
+			OBJECT INPUT
+		------------------*/
+		//standard number input, force with single quote to use letters
+		'0'..='9'|'.'|'_'|'\''|'@' => object_input::standard_number_input(handler, command_stack, command),
+		//any-base number input
+		'(' => object_input::any_base_number_input(handler, command_stack, command),
+		//string input
+		'[' => object_input::string_input(handler, command_stack, command),
+	
+		/*--------------
+			PRINTING
+		--------------*/
+		//print top with newline
+		'p' => printing::print_top(handler),
+		//print full stack top to bottom
+		'f' => printing::print_full_stack(handler),
+		//pop and print without newline
+		'n' => printing::print_pop_wo_newline(handler, command),
+		//pop and print with newline
+		'P' => printing::print_pop(handler, command),
+		//print register
+		'F' => printing::print_register(handler, command_stack),
+	
+		/*----------------
+			ARITHMETIC
+		----------------*/
+		//add or concatenate strings
+		'+' => arithmetic::add(handler, command),
+		//subtract or remove chars from string
+		'-' => arithmetic::subtract(handler, command),
+		//multiply or repeat/invert string
+		'*' => arithmetic::multiply(handler, command),
+		//divide or shorten string to length
+		'/' => arithmetic::divide(handler, command),
+		//modulo, integers only
+		'%' => arithmetic::modulo(handler, command),
+		//euclidean division or split string
+		'~' => arithmetic::euclidean_division(handler, command),
+		//exponentiation
+		'^' => arithmetic::exponent(handler, command),
+		//modular exponentiation, integers only
+		'|' => arithmetic::modular_exponent(handler, command),
+		//square root
+		'v' => arithmetic::square_root(handler, command),
+		//nth root
+		'V' => arithmetic::nth_root(handler, command),
+		//length of string or natural logarithm
+		'g' => arithmetic::ln(handler, command),
+		//base b logarithm
+		'G' => arithmetic::log(handler, command),
+		//sine
+		'u' => arithmetic::sin(handler, command),
+		//cosine
+		'y' => arithmetic::cos(handler, command),
+		//tangent
+		't' => arithmetic::tan(handler, command),
+		//arc-sine
+		'U' => arithmetic::asin(handler, command),
+		//arc-cosine
+		'Y' => arithmetic::acos(handler, command),
+		//arc-tangent
+		'T' => arithmetic::atan(handler, command),
+		//random integer [0;a)
+		'N' => arithmetic::random_int(handler, command),
+
+		//constant/conversion factor lookup or convert number to string
+		'"' => constants::lookup(handler, command),
+	}
+}
+
 pub fn execute(handler: &mut Handler, expression: String) -> Vec<Output> {
     let mut output: Vec<Output> = Vec::new();
     let mut command_stack: Vec<String> = if expression.is_empty() {
@@ -263,7 +341,7 @@ pub fn execute(handler: &mut Handler, expression: String) -> Vec<Output> {
 					let a = handler.main_stack.pop().unwrap();
                     match a {
                         StackObject::String(string) => output.push(output!(Ok, format!("[{}]", string.clone()), Command::NoNewLine)),
-                        StackObject::Float(float) => output.push(output!(Ok, float_to_string(float.clone(), handler.parameter_stack.last().unwrap().2.clone(), handler.parameter_stack.last().unwrap().0.clone()), Command::NoNewLine)),
+                        StackObject::Float(float) => output.push(output!(Ok, format!("{}", float_to_string(float.clone(), handler.parameter_stack.last().unwrap().2.clone(), handler.parameter_stack.last().unwrap().0.clone())), Command::NoNewLine)),
                     }
 				}
 			},
@@ -274,7 +352,7 @@ pub fn execute(handler: &mut Handler, expression: String) -> Vec<Output> {
 					let a = handler.main_stack.pop().unwrap();
 					match a {
                         StackObject::String(string) => output.push(output!(Ok, format!("{}", string.clone()))),
-                        StackObject::Float(float) => output.push(output!(Ok, float_to_string(float.clone(), handler.parameter_stack.last().unwrap().2.clone(), handler.parameter_stack.last().unwrap().0.clone()))),
+                        StackObject::Float(float) => output.push(output!(Ok, format!("{}", float_to_string(float.clone(), handler.parameter_stack.last().unwrap().2.clone(), handler.parameter_stack.last().unwrap().0.clone())))),
                     }
 				}
 			},
@@ -293,21 +371,17 @@ pub fn execute(handler: &mut Handler, expression: String) -> Vec<Output> {
 					if handler.registers.len()>ri {
 						if !handler.registers[ri].is_empty(){
 							for i in (0..handler.registers[ri].len()).rev() {
-								if handler.registers[ri][i].o.t {
-									output.push(output!(Ok, format!("[{}]", handler.registers[ri][i].o.s.clone())));
-								}
-								else {
-									output.push(output!(Ok, format!("{}", flt_to_str(handler.registers[ri][i].o.n.clone(), handler.parameter_stack.last().unwrap().2.clone(), handler.parameter_stack.last().unwrap().0.clone()))));
-								}
-								if !handler.registers[ri][i].a.is_empty() {
-									let maxwidth = handler.registers[ri][i].a.len().to_string().len();	//length of longest index number
-									for ai in 0..handler.registers[ri][i].a.len() {
-										if handler.registers[ri][i].a[ai].t {
-											output.push(output!(Ok, format!("\t{:>maxwidth$}: [{}]", ai, handler.registers[ri][i].a[ai].s)));
-										}
-										else {
-											output.push(output!(Ok, format!("\t{:>maxwidth$}: {}", ai, flt_to_str(handler.registers[ri][i].a[ai].n.clone(), handler.parameter_stack.last().unwrap().2.clone(), handler.parameter_stack.last().unwrap().0.clone()))));
-										}
+								output.push(output!(Ok, match handler.registers[ri][i][0] {
+									 String(string) => format!("[{}]", string.clone()),
+                                     Float(float) => format!("{}", float_to_string(float.clone(), handler.parameter_stack.last().unwrap().2.clone(), handler.parameter_stack.last().unwrap().0.clone()))
+								}));
+								if !handler.registers[ri][i].is_empty() {
+									let maxwidth = handler.registers[ri][i].len().to_string().len();	//length of longest index number
+									for ai in 0..handler.registers[ri][i].len() {
+                                        output.push(output!(Ok, match handler.registers[ri][i][ai] {
+                                            String(string) => format!("\t{:>maxwidth$}: [{}]", ai, string),
+                                            Float(float) => format!("\t{:>maxwidth$}: {}", ai, float_to_string(float, handler.parameter_stack.last().unwrap().2.clone(), handler.parameter_stack.last().unwrap().0.clone())),
+                                        }));
 									}
 								}
 							}
@@ -326,7 +400,7 @@ pub fn execute(handler: &mut Handler, expression: String) -> Vec<Output> {
 				if check_n(command, handler.main_stack.len()) {
 					let b = handler.main_stack.pop().unwrap();
 					let a = handler.main_stack.pop().unwrap();
-					if check_t(command, a.t, b.t, false) {
+					if check_t(command, a.equal_types(b), false) {
 						//concat strings
 						if a.t {
 							handler.main_stack.push(Obj::s(a.s + &b.s));
@@ -746,7 +820,7 @@ pub fn execute(handler: &mut Handler, expression: String) -> Vec<Output> {
 							}
 						}
 						else {	//"print" number to string
-							handler.main_stack.push(Obj::s(flt_to_str(a.n, handler.parameter_stack.last().unwrap().2.clone(), handler.parameter_stack.last().unwrap().0.clone())));
+							handler.main_stack.push(Obj::s(float_to_string(a.n, handler.parameter_stack.last().unwrap().2.clone(), handler.parameter_stack.last().unwrap().0.clone())));
 						}
 					}
 				}
@@ -1621,10 +1695,9 @@ fn rev_str(mut instr: String) -> String {
 	outstr
 }
 
-
 //checks if n arguments are sufficient for a command (defines adicity)
 //not used by niladics
-fn check_n(op: char, n: usize) -> bool {
+fn check_n(op: char, n: usize, output: &mut Vec<Output>) -> bool {
 	if match op {
 		//triadic
 		'|' => n>=3,
@@ -1638,6 +1711,40 @@ fn check_n(op: char, n: usize) -> bool {
 	{ true }
 	else {
 		output.push(output!(Err, format!("! Insufficient arguments for command '{}'", op)));
+		false
+	}
+}
+
+//checks if a command can be used on provided argument types
+//a-c: types (.t) of the operands that would be used (in canonical order), use false if not required
+fn check_t(op: char, a: &StackObject, b: Option<&StackObject>, c: Option<&StackObject>, output: &mut Vec<Output>) -> bool {
+	let a = a.is_string();
+	let b = b.map(|x| x.is_string()).unwrap_or(false);
+	let c = c.map(|x| x.is_string()).unwrap_or(false);
+	if 
+		match op {
+			//'+' can also concatenate strings
+			'+' => a == b,
+
+			//string manipulation, store into array
+			'-'|'*'|'/'|'~'|':' => !b,
+
+			//read file by name, get env variable, execute os command
+			'&'|'$'|'\\' => a,
+
+			//convert both ways, constant lookup by string name or convert number to string, execute macros, get log or string length
+			'a'|'A'|'"'|'x'|'g' => true,
+
+			//auto-macro
+			'X' => a && !b,
+
+			//all other ops can only have numbers
+			_ => !a && !b && !c,
+		}
+	{
+		true
+	} else {
+		output.push(output!(Err, format!("! Invalid argument type(s) for command '{}'", op)));
 		false
 	}
 }

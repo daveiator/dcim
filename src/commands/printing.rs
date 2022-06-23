@@ -1,7 +1,5 @@
 use crate::handler::{Handler, Output, StackObject, Command, output};
 
-use rug::{Integer, integer::Order, Complete, Float, float::{Round, Constant}, ops::Pow, rand::RandState};
-
 //print top with newline
 pub fn print_top<'a>(handler: &'a Handler) -> Vec<Output<'a>> {
     let mut output = Vec::new();

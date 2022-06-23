@@ -1,11 +1,22 @@
-use rug::{Integer, integer::Order, Complete, Float, float::{Round, Constant}, ops::Pow, rand::RandState};
+use rug::{Integer, integer::Order, Complete, Float, float::{Round, Constant}, ops::Pow};
 use std::time::{SystemTime, Duration};
+
+use crate::handler::{Handler, Output, StackObject, Command, output};
+use crate::commands;
 
 pub mod env {
 	use rug::Integer;
 	use std::cmp::Ordering;
     pub const INT_ROUND_DEFAULT: (Integer, Ordering) = (Integer::ZERO, Ordering::Equal);
+
+	use std::sync::Arc;
+	use rug::rand::RandState;
+	use lazy_static::lazy_static;
+	lazy_static! {
+    pub static ref RNG: Arc<RandState<'static>> = Arc::new(RandState::new());
+	}
 }
+
 
 //library of constants and unit conversion factors
 //unless specified, unit factors are based on the most prevalent international standard units for their respective quantities
